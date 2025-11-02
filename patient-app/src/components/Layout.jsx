@@ -1,0 +1,1 @@
+export default function Layout({children}){return(<div><header>MediBridge</header><main>{children}</main></div>)}

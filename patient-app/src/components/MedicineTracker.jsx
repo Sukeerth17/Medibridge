@@ -1,0 +1,1 @@
+export default function MedicineTracker(){return <div>Medicine Tracker</div>}

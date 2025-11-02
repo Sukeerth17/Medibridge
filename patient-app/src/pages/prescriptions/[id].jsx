@@ -1,0 +1,1 @@
+export default function Prescription(){return <div>Prescription Detail</div>}

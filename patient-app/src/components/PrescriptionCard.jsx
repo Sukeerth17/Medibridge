@@ -1,0 +1,1 @@
+export default function PrescriptionCard(){return <div>Prescription Card</div>}
