@@ -18,5 +18,4 @@ EXPOSE 50051
 EXPOSE 8000
 
 # The command to run the FastAPI application using Uvicorn
-# We will primarily use gRPC, but Uvicorn is needed for FastAPI standard startup
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

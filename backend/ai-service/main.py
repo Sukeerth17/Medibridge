@@ -3,14 +3,14 @@ import uvicorn
 import time
 import logging
 import threading
-
-# Import gRPC related libraries
 from concurrent import futures
 import grpc
-# NOTE: The 'pb' and 'AIProcessingServicer' would come from
-# compiled .proto files and a separate implementation file (e.g., processing/service.py)
+from processing.ai_logic import extract_text_from_report, simplify_report_summary, translate_prescription, generate_audio_narration, process_chatbot_query
+
+# NOTE: Since we are not compiling .proto files, we will mock the gRPC server setup here.
+# In a full build, the lines below would be uncommented and correct pb packages would be imported.
 # import pb_compiled_files.ai_service_pb2_grpc as pb_grpc 
-# from processing.service import AIProcessingServicer 
+# import pb_compiled_files.ai_service_pb2 as pb
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -30,52 +30,49 @@ def health_check():
     """Endpoint for checking the status of the FastAPI server."""
     return {"status": "AI Service is running (FastAPI)", "timestamp": time.time()}
 
-# --- 2. gRPC Server Setup ---
+# --- 2. Mock gRPC Service Implementation ---
 
-# Placeholder gRPC Service Implementation (would be in processing/service.py)
-class MockAIProcessingServicer(): # Placeholder class name
+class MockAIProcessingServicer():
     """Mocks the AI service methods called by the Go API."""
     
-    # Method called by Go API for prescription flow
+    # Mock for TranslateAndAudio (Prescription Flow)
     def TranslateAndAudio(self, request, context):
         logger.info(f"gRPC received: TranslateAndAudio request for data.")
-        # Simulate heavy NLP/ML processing
+        # Mocking calls to core logic
+        translated = translate_prescription("Original Text", "Hindi")
+        audio_url = generate_audio_narration(translated)
         time.sleep(1.5) 
-        
-        # In a real scenario, this would return a gRPC response object with:
-        # translated_text and audio_file_url
-        logger.info(f"Processing complete. Returning mock results.")
-        # return pb.TranslateAndAudioResponse(translated_text="Mock Translation", audio_file_url="http://mock.com/audio.mp3")
-        return None # Returning None for simplicity in this mock
-
-    # Method called by Go API for report flow
-    def ProcessReport(self, request, context):
-        logger.info(f"gRPC received: ProcessReport request for file ID: {request.report_id}")
-        # Text Extraction from original document (e.g., PDF) [cite: 43]
-        # Simplification into patient-friendly summary [cite: 44]
-        time.sleep(3.0) 
-        
-        # The Go API updates the status to "Ready to Share" once this is complete [cite: 93]
-        logger.info(f"Report processing complete. Summary generated and saved.")
-        # return pb.ProcessReportResponse(status="Simplified")
+        logger.info("Processing complete. Mocking DB update.")
+        # return pb.TranslateAndAudioResponse(...)
         return None 
 
-    # Method called by Go API for chatbot flow
+    # Mock for ProcessReport (Scanning Flow)
+    def ProcessReport(self, request, context):
+        logger.info(f"gRPC received: ProcessReport request for file.")
+        # Mocking calls to core logic
+        technical_text = extract_text_from_report(b"mock_file_data")
+        simplified = simplify_report_summary(technical_text)
+        time.sleep(3.0) 
+        logger.info(f"Report processing complete. Simplified Summary: {simplified[:30]}...")
+        # return pb.ProcessReportResponse(...)
+        return None 
+
+    # Mock for ChatbotQuery (Patient Flow)
     def ChatbotQuery(self, request, context):
         logger.info(f"gRPC received: ChatbotQuery for: {request.query}")
-        # Processes the health query and returns a conversational response [cite: 66]
+        response = process_chatbot_query(request.query, [])
         time.sleep(0.5)
         logger.info(f"Chatbot response generated.")
-        # return pb.ChatbotResponse(answer="Mock response to your query.")
+        # return pb.ChatbotResponse(...)
         return None
 
 # Function to run the gRPC server in a separate thread
 def serve_grpc():
     """Starts the gRPC server."""
-    # gRPC runs on port 50051 (standard gRPC port, defined in docker-compose)
     grpc_port = '50051' 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     
+    # NOTE: This line would be used in a real implementation:
     # pb_grpc.add_AIProcessingServicer_to_server(MockAIProcessingServicer(), server) 
     
     server.add_insecure_port(f'[::]:{grpc_port}')
@@ -91,10 +88,9 @@ def serve_grpc():
 if __name__ == "__main__":
     # Start the gRPC server in a background thread
     grpc_thread = threading.Thread(target=serve_grpc)
-    grpc_thread.daemon = True # Allows the main program to exit even if the thread is running
+    grpc_thread.daemon = True 
     grpc_thread.start()
     
     # Start the FastAPI server (Uvicorn)
-    # The CMD in the Dockerfile will execute this if we were to use the Docker CMD directly
     logger.info("Starting FastAPI Uvicorn server on port 8000...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
