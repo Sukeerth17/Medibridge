@@ -1,0 +1,75 @@
+# -----------------------------------------------------------
+# 🚫 Node & Build Files
+# -----------------------------------------------------------
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# -----------------------------------------------------------
+# ⚙️ Environment Variables (API keys, secrets, etc.)
+# -----------------------------------------------------------
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# -----------------------------------------------------------
+# 📦 System & Editor Files
+# -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------------------------------------
+# 🧱 TypeScript / Cache / Temporary Files
+# -----------------------------------------------------------
+*.tsbuildinfo
+*.cache/
+.cache/
+.tmp/
+coverage/
+*.pid
+
+# -----------------------------------------------------------
+# 🧪 Test & Lint Outputs
+# -----------------------------------------------------------
+/coverage
+/jest/
+*.spec.js
+*.test.js
+*.spec.jsx
+*.test.jsx
+
+# -----------------------------------------------------------
+# 📂 Local Preview / Vite Related
+# -----------------------------------------------------------
+*.local
+vite.config.timestamp*
+vite.config.mjs
+vite.config.js.map
+
+# -----------------------------------------------------------
+# 🧰 Optional OS files (macOS, Windows, Linux)
+# -----------------------------------------------------------
+*.bak
+*.old
+*.tmp
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------
+# 🧪 Misc: Ignore Generated Audio/Report Files
+# -----------------------------------------------------------
+public/audio/
+public/reports/
