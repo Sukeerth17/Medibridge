@@ -6,19 +6,20 @@ services:
     image: postgres:15-alpine
     container_name: medibridge_postgres
     restart: always
-    env_file:
-      - ./.env # Load secrets
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
-      # Initializes the database with tables and users (from backend/database/init.sql)
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432" # Exposed for debugging, not necessary for Go API connection
+      - "5433:5432"
     networks:
       - medibridge_net
 
   # -----------------------------------------------------
-  # 2. Core Backend API Gateway (Golang/Gin)
+  # 2. Core Backend API Gateway (Golang/Gin) - FIX APPLIED
   # -----------------------------------------------------
   go-api:
     build:
@@ -28,11 +29,20 @@ services:
     restart: always
     ports:
       - "8080:8080"                  # Expose the primary API port
-    env_file:
-      - ./.env # Load secrets and AI_SERVICE_HOST
+    environment:
+      # Pass DB credentials and secrets
+      DB_HOST: postgres_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      AES_256_KEY: ${AES_256_KEY}
+      AI_SERVICE_HOST: ai-service:50051 
+      # --- CRITICAL FIX: Explicitly tell Gin to bind to all interfaces ---
+      HOST_BIND_ADDRESS: "0.0.0.0" 
     depends_on:
-      - postgres_db                  # API waits for DB
-      - ai-service                   # API waits for AI service for gRPC connection
+      - postgres_db
+      - ai-service
     networks:
       - medibridge_net
 
@@ -46,26 +56,24 @@ services:
     container_name: medibridge_ai_service
     restart: on-failure
     ports:
-      - "50051:50051"                # gRPC port exposed for Go API to connect
-      - "8000:8000"                  # FastAPI port for health checks
+      - "50051:50051"
+      - "8001:8000"
     networks:
       - medibridge_net
 
   # -----------------------------------------------------
-  # 4. Frontend Application Stubs (Simulated React Apps)
-  #    NOTE: These assume you have a basic Dockerfile.dev inside each app folder.
+  # 4. Frontend Application Stubs
   # -----------------------------------------------------
   clinic-app:
     build:
       context: ./clinic-app
-      dockerfile: Dockerfile.dev # Assuming this file exists for React app dev environment
+      dockerfile: Dockerfile.dev 
     container_name: medibridge_clinic_app
     ports:
       - "3001:3000"
     depends_on:
       - go-api
     environment:
-      # Frontends must use the Go API container name for internal requests
       NEXT_PUBLIC_API_URL: http://go-api:8080 
     networks:
       - medibridge_net
@@ -73,7 +81,7 @@ services:
   scanning-app:
     build:
       context: ./scanning-app
-      dockerfile: Dockerfile.dev # Assuming this file exists for React app dev environment
+      dockerfile: Dockerfile.dev
     container_name: medibridge_scanning_app
     ports:
       - "3002:3000"
