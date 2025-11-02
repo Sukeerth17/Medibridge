@@ -1,0 +1,39 @@
+# .gitignore
+
+# ------------------------------------
+# Dependencies and Node Modules
+# ------------------------------------
+**/node_modules
+**/package-lock.json
+
+# ------------------------------------
+# Go Language Build Artifacts
+# ------------------------------------
+*.exe
+*.test
+*.out
+**/bin/
+/backend/go-api/go-api # The built binary name
+
+# ------------------------------------
+# Python Build Artifacts
+# ------------------------------------
+__pycache__/
+*.pyc
+
+# ------------------------------------
+# Docker and Configuration
+# ------------------------------------
+# IMPORTANT: Never commit the file with secrets
+.env 
+
+# ------------------------------------
+# Next.js Build Folders
+# ------------------------------------
+.next/
+out/
+
+# ------------------------------------
+# Database Data Persistence
+# ------------------------------------
+postgres_data

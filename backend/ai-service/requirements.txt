@@ -1,0 +1,14 @@
+# FastAPI framework for the high-speed microservice
+fastapi==0.104.1
+uvicorn==0.23.2
+
+# Data validation and serialization
+pydantic==2.4.2
+
+# gRPC libraries for communication with Go API
+grpcio==1.59.0
+grpcio-tools==1.59.0
+
+# NLP and ML libraries for core AI functionality
+# Placeholder for libraries needed for PDF text extraction (e.g., pdfminer.six)
+# Placeholder for libraries needed for text simplification/translation (e.g., NLTK, spaCy, or a small LLM framework)

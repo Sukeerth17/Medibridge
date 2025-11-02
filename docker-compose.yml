@@ -1,0 +1,122 @@
+
+# Defines the network that all services will use to communicate internally
+networks:
+  medibridge_net:
+    driver: bridge
+
+services:
+  # -----------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # -----------------------------------------------------
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: medibridge_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}       # Loaded from .env
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # Loaded from .env
+      POSTGRES_DB: ${DB_NAME}         # Loaded from .env
+    volumes:
+      # Mounts the init.sql script to initialize tables and roles
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Persists the data
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - medibridge_net
+
+  # -----------------------------------------------------
+  # 2. Core Backend API Gateway (Golang/Gin)
+  # -----------------------------------------------------
+  go-api:
+    build:
+      context: ./backend/go-api     # Build using the go-api/Dockerfile
+      dockerfile: Dockerfile
+    container_name: medibridge_go_api
+    restart: always
+    ports:
+      - "8080:8080"                  # Expose the API Gateway port
+    depends_on:
+      - postgres_db                  # Ensure DB is up before API starts
+      - ai-service                   # Ensure AI service is up for gRPC connection
+    environment:
+      PORT: 8080
+      # Pass database credentials and JWT secret to the Go API
+      DB_HOST: postgres_db           # Use the service name for internal communication
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      # Address for the gRPC client connection in the Go API
+      AI_SERVICE_HOST: ai-service:50051 
+    networks:
+      - medibridge_net
+
+  # -----------------------------------------------------
+  # 3. AI/NLP Microservice (Python/FastAPI/gRPC)
+  # -----------------------------------------------------
+  ai-service:
+    build:
+      context: ./backend/ai-service # Build using the ai-service/Dockerfile
+      dockerfile: Dockerfile
+    container_name: medibridge_ai_service
+    restart: on-failure
+    ports:
+      - "50051:50051"                # gRPC port exposed for Go API to connect
+      - "8000:8000"                  # FastAPI port for health checks
+    networks:
+      - medibridge_net
+
+  # -----------------------------------------------------
+  # 4. Frontend Applications (Development Stubs)
+  #    These services use the build context of their respective folders.
+  #    They depend on the Go API for all data.
+  # -----------------------------------------------------
+  patient-app:
+    build:
+      context: ./patient-app
+      dockerfile: Dockerfile.dev # Assuming a dev Dockerfile for live reload
+    container_name: medibridge_patient_app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - go-api
+    environment:
+      NEXT_PUBLIC_API_URL: http://go-api:8080 # Internal API reference
+    networks:
+      - medibridge_net
+
+  clinic-app:
+    build:
+      context: ./clinic-app
+      dockerfile: Dockerfile.dev
+    container_name: medibridge_clinic_app
+    ports:
+      - "3001:3000"
+    depends_on:
+      - go-api
+    environment:
+      NEXT_PUBLIC_API_URL: http://go-api:8080
+    networks:
+      - medibridge_net
+
+  scanning-app:
+    build:
+      context: ./scanning-app
+      dockerfile: Dockerfile.dev
+    container_name: medibridge_scanning_app
+    ports:
+      - "3002:3000"
+    depends_on:
+      - go-api
+    environment:
+      NEXT_PUBLIC_API_URL: http://go-api:8080
+    networks:
+      - medibridge_net
+
+volumes:
+  postgres_data: # Define the named volume for persistent DB data
+
+# NOTE: The three frontend apps (patient-app, clinic-app, scanning-app) are 
+# placeholders here, assuming you will add basic Dockerfiles later.
