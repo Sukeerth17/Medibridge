@@ -5,7 +5,7 @@ import (
 	"strings"
 	
 	"github.com/gin-gonic/gin"
-	"github.com/MediBridge/go-api/utils"
+	"Medibridge/go-api/utils"
 )
 
 // AuthMiddleware is a Gin middleware that extracts and validates the JWT
@@ -51,7 +51,6 @@ func RBACMiddleware(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("userRole")
 		if !exists {
-            // This should ideally never happen if AuthMiddleware ran first
 			c.JSON(http.StatusForbidden, gin.H{"error": "Role information missing"}) 
 			c.Abort()
 			return

@@ -7,19 +7,25 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 )
 
-// NOTE: In a real application, ENCRYPTION_KEY should be loaded securely from .env
-var aesKey = []byte("a_super_secret_32_byte_key_for_aes256") // 32 bytes for AES-256
+// The AES key (must be 32 bytes for AES-256) loaded from the .env file
+// NOTE: This variable is initialized when the program starts.
+var aesKey = []byte(os.Getenv("AES_256_KEY"))
 
 // Encrypt takes a plaintext string and returns the hex-encoded ciphertext.
 func Encrypt(plaintext string) (string, error) {
+	// Add a check to ensure the key length is correct before using it
+	if len(aesKey) != 32 {
+		return "", fmt.Errorf("AES_256_KEY must be exactly 32 bytes, current length: %d", len(aesKey))
+	}
+
 	block, err := aes.NewCipher(aesKey)
 	if err != nil {
 		return "", err
 	}
 
-	// Create a GCM (Galois/Counter Mode)
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", err
@@ -40,6 +46,11 @@ func Encrypt(plaintext string) (string, error) {
 
 // Decrypt takes a hex-encoded ciphertext string and returns the original plaintext.
 func Decrypt(ciphertextHex string) (string, error) {
+	// Add a check to ensure the key length is correct before using it
+	if len(aesKey) != 32 {
+		return "", fmt.Errorf("AES_256_KEY must be exactly 32 bytes, current length: %d", len(aesKey))
+	}
+	
 	ciphertext, err := hex.DecodeString(ciphertextHex)
 	if err != nil {
 		return "", fmt.Errorf("could not decode hex ciphertext: %w", err)

@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
-	"github.com/MediBridge/go-api/utils"
-	"github.com/MediBridge/go-api/models"
+	"Medibridge/go-api/utils"
+	"Medibridge/go-api/models"
 )
 
 // GetPatientPrescriptions handles GET /v1/patient/prescriptions

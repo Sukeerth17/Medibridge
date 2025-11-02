@@ -2,25 +2,29 @@ package utils
 
 import (
 	"time"
-    "fmt"
+	"fmt"
+	"os"
+
 	"github.com/golang-jwt/jwt/v5"
-    "github.com/MediBridge/go-api/models" // Assuming you've created the models package
 )
 
-// NOTE: In a real application, SECRET_KEY should be loaded securely from .env
-// We'll use a placeholder here as per the plan to use .env [cite: 126]
-var jwtSecretKey = []byte("your_secure_jwt_secret_key_from_env")
+// Define the JWT secret key (loaded from .env via environment variable)
+// NOTE: This variable is initialized when the program starts.
+var jwtSecretKey = []byte(os.Getenv("JWT_SECRET"))
 
 // Claims structure for the JWT
 type CustomClaims struct {
 	ID   string `json:"id"`
-	Role string `json:"role"` // "Patient", "Clinic", or "Scanning" [cite: 106]
+	Role string `json:"role"` // "Patient", "Clinic", or "Scanning"
 	jwt.RegisteredClaims
 }
 
 // GenerateToken creates a new JWT for a user
 func GenerateToken(userID string, userRole string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour) // Token valid for 24 hours
+	if len(jwtSecretKey) == 0 {
+		return "", fmt.Errorf("JWT_SECRET not configured")
+	}
+	expirationTime := time.Now().Add(24 * time.Hour) 
 
 	claims := &CustomClaims{
 		ID:   userID,
@@ -46,7 +50,6 @@ func ValidateToken(tokenString string) (*CustomClaims, error) {
 	claims := &CustomClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		// Verify the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Method)
 		}
