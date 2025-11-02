@@ -1,0 +1,51 @@
+------------------------------------
+
+Node.js / Dependencies
+
+------------------------------------
+
+/node_modules
+/package-lock.json
+/yarn.lock
+
+------------------------------------
+
+Next.js Build Artifacts
+
+------------------------------------
+
+/.next/
+/out/
+/.vercel/
+/npm-debug.log*
+
+------------------------------------
+
+IDE and System Files
+
+------------------------------------
+
+Visual Studio Code
+
+.vscode/
+
+JetBrains IDEs (WebStorm, etc.)
+
+.idea/
+
+macOS files
+
+.DS_Store
+
+------------------------------------
+
+Local Secrets and Uploads (IMPORTANT)
+
+------------------------------------
+
+Prevents accidental inclusion of local secrets or large files.
+
+If the Scanning App saves temporary local files before upload:
+
+/src/temp_uploads/
+/local_keys.json
