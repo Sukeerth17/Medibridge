@@ -1,0 +1,1 @@
+// File placeholder for src/pages/api/patients.ts

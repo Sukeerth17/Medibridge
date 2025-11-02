@@ -1,0 +1,1 @@
+// File placeholder for next.config.js
