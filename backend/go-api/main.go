@@ -11,7 +11,6 @@ import (
 	"Medibridge/go-api/utils"
 )
 
-// Define the User Roles as constants for RBAC
 const (
 	RolePatient  = "Patient"
 	RoleClinic   = "Clinic"
@@ -19,85 +18,105 @@ const (
 )
 
 func main() {
+	// 0. Initialize Database Connection FIRST
+	log.Println("Initializing database connection...")
+	if err := utils.InitDatabase(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer utils.CloseDatabase()
+
 	// 1. Initialize gRPC Client Connection to the Python AI Microservice
-	// Run this in a goroutine to avoid blocking startup if AI service is slow/unavailable
 	go func() {
-		time.Sleep(2 * time.Second) // Give AI service time to start
+		time.Sleep(2 * time.Second)
 		utils.InitGRPCClient()
 	}()
-	
 	defer utils.CloseGRPCClient()
 
 	// 2. Initialize the Gin router
 	router := gin.Default()
 
-	// 3. --- Public Routes (No Auth Required) ---
+	// Enable CORS for frontend apps
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
+	// 3. Public Routes
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "MediBridge API is running",
+			"version": "1.0.0",
+		})
+	})
+
 	router.GET("/v1/status", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "MediBridge Go API is running successfully!",
+			"status":    "MediBridge Go API is running successfully!",
 			"timestamp": time.Now().Unix(),
 		})
 	})
 
-	// All users log in here to receive their JWT token
+	// Health check for Docker
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+
+	// Auth routes
 	authGroup := router.Group("/v1/auth")
 	{
 		authGroup.POST("/login", handlers.LoginHandler)
 	}
 
-	// 4. --- Protected Routes (Requires AuthMiddleware) ---
+	// 4. Protected Routes
 	protected := router.Group("/v1", handlers.AuthMiddleware())
 
-	// --- 5. Role-Specific Groups (Requires RBAC Middleware) ---
-	// PATIENT APP Routes (Accessibility & Control)
+	// Patient Routes
 	patientGroup := protected.Group("/patient", handlers.RBACMiddleware(RolePatient))
 	{
-		// /v1/patient/prescriptions: GET request to retrieve personalized dashboard data
 		patientGroup.GET("/prescriptions", handlers.GetPatientPrescriptions)
-		// /v1/patient/adherence: POST request to log dose adherence
 		patientGroup.POST("/adherence", handlers.LogAdherence)
-		// /v1/patient/reports: GET request to retrieve simplified reports
 		patientGroup.GET("/reports", handlers.GetPatientReports)
 	}
 
-	// CHATBOT Route (Accessible by Patient Role)
-	// The chatbot is isolated as a group because it triggers a separate gRPC call.
+	// Chatbot Route
 	chatbotGroup := protected.Group("/chatbot", handlers.RBACMiddleware(RolePatient))
 	{
-		// /v1/chatbot/query: POST request for conversational AI interface
 		chatbotGroup.POST("/query", handlers.ChatbotQueryHandler)
 	}
 
-	// CLINIC APP Routes (Efficiency & Digitalization)
+	// Clinic Routes
 	clinicGroup := protected.Group("/clinic", handlers.RBACMiddleware(RoleClinic))
 	{
-		// /v1/clinic/prescriptions/new: POST request to submit a new structured prescription
 		clinicGroup.POST("/prescriptions/new", handlers.CreateNewPrescription)
-		// /v1/clinic/patients/search: GET request to lookup a patient via ID or name
 		clinicGroup.GET("/patients/search", handlers.SearchPatients)
-		// /v1/clinic/patients/:id/full: GET request for professional-grade history
 		clinicGroup.GET("/patients/:id/full", handlers.GetPatientFullRecord)
 	}
 
-	// SCANNING CENTER APP Routes (Data Flow & Automation)
+	// Scanning Routes
 	scanningGroup := protected.Group("/scanning", handlers.RBACMiddleware(RoleScanning))
 	{
-		// /v1/scanning/reports/upload: POST request to upload the original technical report
 		scanningGroup.POST("/reports/upload", handlers.UploadTechnicalReport)
-		// /v1/scanning/reports/:id/finalize: POST request to trigger multi-party sharing
 		scanningGroup.POST("/reports/:id/finalize", handlers.FinalizeAndShareReport)
 	}
 
-	// Start the HTTP server
+	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	
-	// Bind to 0.0.0.0 to accept connections from outside the container
+
 	addr := "0.0.0.0:" + port
 	log.Printf("Starting MediBridge Go API server on %s...", addr)
-	
+
 	if err := router.Run(addr); err != nil {
 		log.Fatal("Failed to run server: ", err)
 	}

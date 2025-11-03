@@ -2,44 +2,64 @@ import React, { useState, useEffect } from 'react';
 import ReportUploadForm from '../components/ReportUploadForm';
 import StatusDashboard from '../components/StatusDashboard';
 
-/**
- * Main dashboard page for the Scanning Center.
- * It fetches and displays the list of all reports and their statuses.
- * It also includes the form to upload new reports.
- */
 export default function Dashboard() {
-  // State to hold the list of reports
   const [reports, setReports] = useState([]);
   const [error, setError] = useState(null);
 
-  // --- Mock Data & API Simulation ---
-  // In a real app, this useEffect would fetch the reports from the Go API
   useEffect(() => {
-    // Simulating GET /v1/scanning/reports
     console.log('Fetching reports from backend...');
     const mockReports = [
-      { id: 'rep-001', patientName: 'Jane Doe', scanType: 'MRI - Brain', status: 'Ready to Share' },
-      { id: 'rep-002', patientName: 'John Smith', scanType: 'CT Scan - Chest', status: 'AI Processing' },
-      { id: 'rep-003', patientName: 'Alice Brown', scanType: 'X-Ray - Left Arm', status: 'Uploaded' },
+      { 
+        id: 'rep-001', 
+        patientName: 'Jane Doe', 
+        patientId: 'PAT001',
+        age: 45,
+        scanType: 'MRI - Brain', 
+        referringClinic: 'City Hospital',
+        scanDateTime: new Date().toISOString(),
+        status: 'Ready to Share' 
+      },
+      { 
+        id: 'rep-002', 
+        patientName: 'John Smith', 
+        patientId: 'PAT002',
+        age: 62,
+        scanType: 'CT Scan - Chest', 
+        referringClinic: 'Metro Clinic',
+        scanDateTime: new Date(Date.now() - 86400000).toISOString(),
+        status: 'AI Processing' 
+      },
+      { 
+        id: 'rep-003', 
+        patientName: 'Alice Brown', 
+        patientId: 'PAT003',
+        age: 28,
+        scanType: 'X-Ray - Left Arm', 
+        referringClinic: 'Community Health',
+        scanDateTime: new Date(Date.now() - 172800000).toISOString(),
+        status: 'Uploaded' 
+      },
     ];
     setReports(mockReports);
   }, []);
 
-  // Callback function for when a new report is successfully uploaded
   const handleUploadSuccess = (newReport) => {
-    // Adds the newly uploaded report to the top of the list
-    // The real API would return this new report object
     const reportWithStatus = {
       ...newReport,
-      id: `rep-00${reports.length + 1}`, // Mock ID
-      status: 'Uploaded', // Initial status after upload
+      id: `rep-${Date.now()}`,
+      status: 'Uploaded',
     };
     setReports([reportWithStatus, ...reports]);
   };
 
+  const handleShareReport = (reportId) => {
+    setReports(reports.map(report => 
+      report.id === reportId ? { ...report, status: 'Shared' } : report
+    ));
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('jwt_token');
-    // In Next.js, you'd use router.push('/')
     window.location.href = '/'; 
     console.log('Logged out');
   };
@@ -59,11 +79,8 @@ export default function Dashboard() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <main style={{ marginTop: '20px' }}>
-        {/* Section 1: The Upload Form */}
         <ReportUploadForm onUploadSuccess={handleUploadSuccess} />
-
-        {/* Section 2: The Status Monitor */}
-        <StatusDashboard reports={reports} />
+        <StatusDashboard reports={reports} onShareReport={handleShareReport} />
       </main>
     </div>
   );
