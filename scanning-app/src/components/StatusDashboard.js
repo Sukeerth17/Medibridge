@@ -1,23 +1,17 @@
 import React from 'react';
 
-/**
- * Component for the "AI Processing & Status Monitor".
- * Displays a list of reports and their current status.
- * Provides a "Share" button for completed reports.
- */
 export default function StatusDashboard({ reports, onShareReport }) {
 
-  // Function to determine the color of the status badge
   const getStatusColor = (status) => {
     switch (status) {
       case 'Ready to Share':
-        return '#28a745'; // Green
+        return '#28a745';
       case 'AI Processing':
-        return '#fd7e14'; // Orange
+        return '#fd7e14';
       case 'Uploaded':
-        return '#6c757d'; // Gray
+        return '#6c757d';
       case 'Shared':
-        return '#007bff'; // Blue
+        return '#007bff';
       default:
         return '#333';
     }
@@ -35,31 +29,9 @@ export default function StatusDashboard({ reports, onShareReport }) {
 
   const handleShare = (reportId) => {
     console.log(`Sharing report: ${reportId}`);
-    
-    // --- API Call Simulation (POST /v1/scanning/reports/{report_id}/finalize) ---
-    // This API call triggers the backend to send:
-    // 1. Simplified Report to Patient
-    // 2. Original Technical Report to Clinic
-    //
-    // const token = localStorage.getItem('jwt_token');
-    // const response = await fetch(`/api/v1/scanning/reports/${reportId}/finalize`, {
-    //   method: 'POST',
-    //   headers: { 'Authorization': `Bearer ${token}` }
-    // });
-    // if (response.ok) {
-    //   console.log('Report shared successfully!');
-    //   onShareReport(reportId); // Tell parent to update status
-    // } else {
-    //   console.error('Failed to share report.');
-    // }
-    // --- End Simulation ---
-
-    // Simulate success for the mock
-    console.log(`Report ${reportId} shared successfully! (Simulation)`);
-    onShareReport(reportId); // Tell parent to update status
+    onShareReport(reportId);
   };
 
-  // Simple styles for the table
   const tableHeaderStyle = {
     padding: '12px',
     textAlign: 'left',
@@ -98,15 +70,17 @@ export default function StatusDashboard({ reports, onShareReport }) {
               </td>
               <td style={tableCellStyle}>
                 <strong>{report.scanType}</strong>
-                <br/>{new Date(report.scanDateTime).toLocaleString()}
+                {report.scanDateTime && (
+                  <>
+                    <br/>{new Date(report.scanDateTime).toLocaleString()}
+                  </>
+                )}
                 <br/>Ref: {report.referringClinic}
               </td>
               <td style={tableCellStyle}>
-                {/* This is the "AI Processing Status" */}
                 <span style={statusBadgeStyle(report.status)}>{report.status}</span>
               </td>
               <td style={{...tableCellStyle, textAlign: 'center'}}>
-                {/* This is the "Secure Multi-Party Sharing" button */}
                 {report.status === 'Ready to Share' ? (
                   <button 
                     onClick={() => handleShare(report.id)}
@@ -132,4 +106,3 @@ export default function StatusDashboard({ reports, onShareReport }) {
     </div>
   );
 }
-
