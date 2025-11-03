@@ -9,6 +9,6 @@ pydantic==2.4.2
 grpcio==1.59.0
 grpcio-tools==1.59.0
 
-# NLP and ML libraries for core AI functionality
+# Placeholder for NLP/ML libraries
 # Placeholder for libraries needed for PDF text extraction (e.g., pdfminer.six)
 # Placeholder for libraries needed for text simplification/translation (e.g., NLTK, spaCy, or a small LLM framework)

@@ -44,6 +44,12 @@ services:
     networks:
       - medibridge-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Python AI Microservice
   ai-service:
@@ -57,44 +63,52 @@ services:
     networks:
       - medibridge-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Clinic App Frontend (Next.js)
   clinic-app:
     build:
       context: ./clinic-app
-      dockerfile: Dockerfile.dev
-    container_name: medibridge-clinic-app
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      dockerfile: Dockerfile.dev 
+      no_cache: true # <--- CRITICAL FIX: Forces installation from scratch
+    container_name: medibridge_clinic_app
     ports:
       - "3001:3000"
     depends_on:
-      - go-api
+      go-api:
+        condition: service_healthy
     networks:
       - medibridge-network
     volumes:
       - ./clinic-app:/app
       - /app/node_modules
       - /app/.next
+    restart: unless-stopped
 
   # Scanning Center App Frontend (Next.js)
   scanning-app:
     build:
       context: ./scanning-app
       dockerfile: Dockerfile.dev
-    container_name: medibridge-scanning-app
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      no_cache: true # <--- CRITICAL FIX: Forces installation from scratch
+    container_name: medibridge_scanning_app
     ports:
       - "3002:3000"
     depends_on:
-      - go-api
+      go-api:
+        condition: service_healthy
     networks:
       - medibridge-network
     volumes:
       - ./scanning-app:/app
       - /app/node_modules
       - /app/.next
+    restart: unless-stopped
 
 volumes:
   postgres_data:
