@@ -1,100 +1,104 @@
 services:
-  # -----------------------------------------------------
-  # 1. PostgreSQL Database Service
-  # -----------------------------------------------------
-  postgres_db:
+  # PostgreSQL Database
+  postgres:
     image: postgres:15-alpine
-    container_name: medibridge_postgres
-    restart: always
+    container_name: medibridge-db
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: medibridge_user
+      POSTGRES_PASSWORD: medibridge_pass
+      POSTGRES_DB: medibridge_db
     volumes:
-      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medibridge_user -d medibridge_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
-      - medibridge_net
+      - medibridge-network
 
-  # -----------------------------------------------------
-  # 2. Core Backend API Gateway (Golang/Gin) - FIX APPLIED
-  # -----------------------------------------------------
+  # Go API Backend
   go-api:
     build:
-      context: ./backend/go-api     
+      context: ./backend/go-api
       dockerfile: Dockerfile
-    container_name: medibridge_go_api
-    restart: always
-    ports:
-      - "8080:8080"                  # Expose the primary API port
+    container_name: medibridge-go-api
     environment:
-      # Pass DB credentials and secrets
-      DB_HOST: postgres_db
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      JWT_SECRET: ${JWT_SECRET}
-      AES_256_KEY: ${AES_256_KEY}
-      AI_SERVICE_HOST: ai-service:50051 
-      # --- CRITICAL FIX: Explicitly tell Gin to bind to all interfaces ---
-      HOST_BIND_ADDRESS: "0.0.0.0" 
+      JWT_SECRET: your-super-secret-jwt-key-minimum-32-characters-long-for-security
+      AES_256_KEY: 12345678901234567890123456789012
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: medibridge_user
+      DB_PASSWORD: medibridge_pass
+      DB_NAME: medibridge_db
+      AI_SERVICE_HOST: ai-service:50051
+      PORT: 8080
+    ports:
+      - "8080:8080"
     depends_on:
-      - postgres_db
-      - ai-service
+      postgres:
+        condition: service_healthy
     networks:
-      - medibridge_net
+      - medibridge-network
+    restart: unless-stopped
 
-  # -----------------------------------------------------
-  # 3. AI/NLP Microservice (Python/FastAPI/gRPC)
-  # -----------------------------------------------------
+  # Python AI Microservice
   ai-service:
     build:
-      context: ./backend/ai-service 
+      context: ./backend/ai-service
       dockerfile: Dockerfile
-    container_name: medibridge_ai_service
-    restart: on-failure
+    container_name: medibridge-ai-service
     ports:
+      - "8000:8000"
       - "50051:50051"
-      - "8001:8000"
     networks:
-      - medibridge_net
+      - medibridge-network
+    restart: unless-stopped
 
-  # -----------------------------------------------------
-  # 4. Frontend Application Stubs
-  # -----------------------------------------------------
+  # Clinic App Frontend (Next.js)
   clinic-app:
     build:
       context: ./clinic-app
-      dockerfile: Dockerfile.dev 
-    container_name: medibridge_clinic_app
+      dockerfile: Dockerfile.dev
+    container_name: medibridge-clinic-app
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
       - "3001:3000"
     depends_on:
       - go-api
-    environment:
-      NEXT_PUBLIC_API_URL: http://go-api:8080 
     networks:
-      - medibridge_net
+      - medibridge-network
+    volumes:
+      - ./clinic-app:/app
+      - /app/node_modules
+      - /app/.next
 
+  # Scanning Center App Frontend (Next.js)
   scanning-app:
     build:
       context: ./scanning-app
       dockerfile: Dockerfile.dev
-    container_name: medibridge_scanning_app
+    container_name: medibridge-scanning-app
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
       - "3002:3000"
     depends_on:
       - go-api
-    environment:
-      NEXT_PUBLIC_API_URL: http://go-api:8080
     networks:
-      - medibridge_net
+      - medibridge-network
+    volumes:
+      - ./scanning-app:/app
+      - /app/node_modules
+      - /app/.next
 
 volumes:
-  postgres_data: 
+  postgres_data:
 
 networks:
-  medibridge_net:
+  medibridge-network:
     driver: bridge
