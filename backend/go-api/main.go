@@ -15,6 +15,7 @@ const (
 	RolePatient  = "Patient"
 	RoleClinic   = "Clinic"
 	RoleScanning = "Scanning"
+	RoleAdmin    = "Admin"
 )
 
 func main() {
@@ -74,6 +75,8 @@ func main() {
 	authGroup := router.Group("/v1/auth")
 	{
 		authGroup.POST("/login", handlers.LoginHandler)
+		authGroup.POST("/otp/request", handlers.RequestOTP)
+		authGroup.POST("/otp/verify", handlers.VerifyOTP)
 	}
 
 	// 4. Protected Routes
@@ -99,6 +102,10 @@ func main() {
 		clinicGroup.POST("/prescriptions/new", handlers.CreateNewPrescription)
 		clinicGroup.GET("/patients/search", handlers.SearchPatients)
 		clinicGroup.GET("/patients/:id/full", handlers.GetPatientFullRecord)
+		
+		// Drug database routes
+		clinicGroup.GET("/drugs", handlers.GetDrugDatabase)
+		clinicGroup.GET("/drugs/search", handlers.SearchDrugs)
 	}
 
 	// Scanning Routes
@@ -106,6 +113,12 @@ func main() {
 	{
 		scanningGroup.POST("/reports/upload", handlers.UploadTechnicalReport)
 		scanningGroup.POST("/reports/:id/finalize", handlers.FinalizeAndShareReport)
+	}
+
+	// Admin Routes (for CSV upload)
+	adminGroup := protected.Group("/admin", handlers.RBACMiddleware(RoleAdmin, RoleClinic))
+	{
+		adminGroup.POST("/drugs/upload", handlers.UploadDrugCSV)
 	}
 
 	// Start server
