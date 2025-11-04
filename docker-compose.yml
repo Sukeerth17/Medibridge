@@ -11,7 +11,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5433:5432"  # Fixed: Changed from 5433 to 5432
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U medibridge_user -d medibridge_db"]
       interval: 10s
@@ -39,7 +39,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./drugs.csv:/app/drugs.csv  # Mount CSV from main directory
+      - ./drugs.csv:/app/drugs.csv
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,7 +52,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    command: sh -c "echo '\n🚀 Go API starting on http://localhost:8080\n' && ./Medibridge_api"
+    # FIX: Changed Medibridge_api to medibridge_api
+    command: sh -c "echo '\n🚀 Go API starting on http://localhost:8080\n' && ./medibridge_api"
 
   # Python AI Microservice
   ai-service:
@@ -72,8 +73,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    command: sh -c "echo '\n🤖 AI Service starting on http://localhost:8000\n' && python3 ai_logic.py"
-    
+    command: sh -c "echo '\n🤖 AI Service starting on http://localhost:8000\n' && uvicorn main:app --host 0.0.0.0 --port 8000"
 
   # Patient App Frontend
   patient-app:
