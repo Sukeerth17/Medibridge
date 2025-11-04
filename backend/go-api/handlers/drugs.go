@@ -3,7 +3,9 @@ package handlers
 import (
 	"encoding/csv"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -84,13 +86,25 @@ func SearchDrugs(c *gin.Context) {
 	c.JSON(http.StatusOK, drugs)
 }
 
-// UploadDrugCSV handles POST /v1/admin/drugs/upload
-// Allows admin to upload a CSV file to populate the drugs database
-func UploadDrugCSV(c *gin.Context) {
-	file, _, err := c.Request.FormFile("csv")
+// LoadDrugsFromCSV loads drugs from CSV file into database
+// This is called from main.go on startup
+func LoadDrugsFromCSV(filePath ...string) error {
+	// Default path
+	csvPath := "/app/drugs.csv"
+	if len(filePath) > 0 && filePath[0] != "" {
+		csvPath = filePath[0]
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
+		log.Printf("CSV file not found at %s, skipping drug database load", csvPath)
+		return nil // Not a critical error
+	}
+
+	file, err := os.Open(csvPath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV file required"})
-		return
+		log.Printf("Warning: Could not open CSV file: %v", err)
+		return nil // Not critical
 	}
 	defer file.Close()
 
@@ -99,8 +113,7 @@ func UploadDrugCSV(c *gin.Context) {
 	// Read header
 	headers, err := reader.Read()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CSV format"})
-		return
+		return err
 	}
 
 	// Find column indices
@@ -124,8 +137,8 @@ func UploadDrugCSV(c *gin.Context) {
 	}
 
 	if nameIdx == -1 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV must have a 'name' column"})
-		return
+		log.Println("Warning: CSV must have a 'name' column")
+		return nil
 	}
 
 	// Create table if not exists
@@ -138,15 +151,14 @@ func UploadDrugCSV(c *gin.Context) {
 		)
 	`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create drugs table"})
-		return
+		log.Printf("Failed to create drugs table: %v", err)
+		return err
 	}
 
 	// Clear existing data
 	_, err = utils.DB.Exec(`TRUNCATE TABLE drugs`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear drugs table"})
-		return
+		log.Printf("Failed to clear drugs table: %v", err)
 	}
 
 	// Insert drugs
@@ -199,8 +211,6 @@ func UploadDrugCSV(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Drugs uploaded successfully",
-		"count":   count,
-	})
+	log.Printf("Successfully loaded %d drugs from CSV", count)
+	return nil
 }
