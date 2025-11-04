@@ -11,7 +11,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5433:5432"  # Changed from 5433 to 5432
+      - "5433:5432"  # Fixed: Changed from 5433 to 5432
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U medibridge_user -d medibridge_db"]
       interval: 10s
@@ -28,7 +28,7 @@ services:
     container_name: medibridge-go-api
     environment:
       JWT_SECRET: "JqA3pBc7fM8kE2sT5uW0vX1yZ6hN9gD4lCjO!YtVzRrQbXsA"
-      AES_256_KEY: 12345678901234567890123456789012
+      AES_256_KEY: "12345678901234567890123456789012"
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: medibridge_user
@@ -38,6 +38,8 @@ services:
       PORT: 8080
     ports:
       - "8080:8080"
+    volumes:
+      - ./drugs.csv:/app/drugs.csv  # Mount CSV from main directory
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,6 +52,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    command: sh -c "echo '\n🚀 Go API starting on http://localhost:8080\n' && ./Medibridge_api"
 
   # Python AI Microservice
   ai-service:
@@ -64,13 +67,15 @@ services:
       - medibridge-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    command: sh -c "echo '\n🤖 AI Service starting on http://localhost:8000\n' && python3 ai_logic.py"
+    
 
-  # Patient App Frontend (Next.js)
+  # Patient App Frontend
   patient-app:
     build:
       context: ./patient-app
@@ -80,7 +85,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
-      - "3000:3000"  # Patient app on port 3000
+      - "3000:3000"
     depends_on:
       go-api:
         condition: service_healthy
@@ -91,8 +96,9 @@ services:
       - /app/node_modules
       - /app/.next
     restart: unless-stopped
+    command: sh -c "echo '\n👤 Patient App starting on http://localhost:3000\n' && npm run dev"
 
-  # Clinic App Frontend (Next.js)
+  # Clinic App Frontend
   clinic-app:
     build:
       context: ./clinic-app
@@ -102,7 +108,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
-      - "3001:3000"  # Clinic app on port 3001
+      - "3001:3000"
     depends_on:
       go-api:
         condition: service_healthy
@@ -113,8 +119,9 @@ services:
       - /app/node_modules
       - /app/.next
     restart: unless-stopped
+    command: sh -c "echo '\n🏥 Clinic App starting on http://localhost:3001\n' && npm run dev"
 
-  # Scanning Center App Frontend (Next.js)
+  # Scanning Center App Frontend
   scanning-app:
     build:
       context: ./scanning-app
@@ -124,7 +131,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
-      - "3002:3000"  # Scanning app on port 3002
+      - "3002:3000"
     depends_on:
       go-api:
         condition: service_healthy
@@ -135,6 +142,7 @@ services:
       - /app/node_modules
       - /app/.next
     restart: unless-stopped
+    command: sh -c "echo '\n🔬 Scanning App starting on http://localhost:3002\n' && npm run dev"
 
 volumes:
   postgres_data:

@@ -1,0 +1,41 @@
+# Start from a Go base image
+FROM golang:1.21-alpine AS builder
+
+# Install git and build tools
+RUN apk add --no-cache git gcc musl-dev
+
+# Set the working directory
+WORKDIR /build
+
+# Copy go module files first (for better caching)
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy all source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o medibridge_api ./main.go
+
+# Start a new, smaller stage for the final image
+FROM alpine:latest
+
+# Install CA certificates and wget for healthcheck
+RUN apk --no-cache add ca-certificates wget
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the built binary from the builder stage
+COPY --from=builder /build/medibridge_api .
+
+# Make the binary executable
+RUN chmod +x medibridge_api
+
+# Expose the port
+EXPOSE 8080
+
+# Command to run the executable
+CMD ["./medibridge_api"]

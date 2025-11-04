@@ -1,30 +1,21 @@
-# Start from a minimal Go base image
+# Start from a minimal Go base image for the builder stage
 FROM golang:1.21-alpine AS builder
 
-# Set the working directory
-WORKDIR /go/src/Medibridge/go-api
+# Set the working directory inside the container
+WORKDIR /app
 
-# Install git so 'go mod tidy' can resolve local module path
-# This is necessary because 'go mod tidy' treats local packages like remote git repos.
-RUN apk add --no-cache git 
-
-# Copy all dependency definition files FIRST
-COPY go.mod ./
-
-# Download all external dependencies (creates go.sum)
-RUN go mod download
-
-# Copy all application source code (handlers, models, utils, and main.go)
-# This invalidates the cache layer if any source file changes.
+# Copy the Go module files and the vendor directory
+# CRITICAL: This copies the vendor directory generated on the host
+COPY go.mod go.sum ./
+COPY vendor/ vendor/
 COPY . .
 
-# Final dependency check and module graph validation
-# This step forces Go to validate the module graph and recognize the local 'replace'
-# directive against the full source code we just copied, generating the final go.sum.
-# We then immediately build.
-RUN go mod tidy && go build -o /Medibridge_api ./main.go
+# Build the application using vendored dependencies
+# CRITICAL FIX: The -mod=vendor flag forces the compiler to use the local 'vendor/' directory.
+# This bypasses the problematic network lookup that caused the "missing go.sum entry" error.
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -installsuffix cgo -o medibridge_api ./main.go
 
-# Start a new, smaller stage for the final image
+# --- Final Runtime Image ---
 FROM alpine:latest
 
 # Install CA certificates for HTTPS/TLS
@@ -34,10 +25,10 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the built binary from the builder stage
-COPY --from=builder /Medibridge_api .
+COPY --from=builder /app/medibridge_api .
 
-# Expose the port (e.g., 8080) that the Gin server will listen on
+# Expose the port (8080) that the Gin server will listen on
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./Medibridge_api"]
+CMD ["./medibridge_api"]
