@@ -1,4 +1,4 @@
-export default function Home(){return <div>Dashboard</div>}import { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
